@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A seven-step quiz for INI-CET aspirants and MBBS students that ranks 41 postgraduate branches by fit.">
+<title>PG Specialty Predictor</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap">
+<style>
+/* Layout: one narrow column, a progress rail on top, one step card at a time, results as three ranked cards plus the full ranked list. */
+:root{
+  --bg:#f1f8fa; --surface:#ffffff; --fg:#0f2b3a; --muted:#557082;
+  --teal:#0e8f8a; --blue:#1e6fd0; --on-accent:#ffffff;
+  --line:#d3e4ea; --tint:#e2f4f2; --tint-blue:#e6f0fc;
+  --warn-bg:#fff4dc; --warn-fg:#6d4a00; --err:#b3261e;
+  --shadow:0 6px 24px rgba(15,60,80,.09);
+  --display:"Sora","Segoe UI",system-ui,sans-serif;
+  --body:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+  --r:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a1920; --surface:#12262f; --fg:#e6f2f5; --muted:#9bb4bf;
+    --teal:#3cc7bf; --blue:#6fb0f7; --on-accent:#05211f;
+    --line:#25424e; --tint:#163a3c; --tint-blue:#17304d;
+    --warn-bg:#3a2f14; --warn-fg:#f1cf85; --err:#ff8a80;
+    --shadow:0 6px 24px rgba(0,0,0,.35); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a1920; --surface:#12262f; --fg:#e6f2f5; --muted:#9bb4bf;
+  --teal:#3cc7bf; --blue:#6fb0f7; --on-accent:#05211f;
+  --line:#25424e; --tint:#163a3c; --tint-blue:#17304d;
+  --warn-bg:#3a2f14; --warn-fg:#f1cf85; --err:#ff8a80;
+  --shadow:0 6px 24px rgba(0,0,0,.35); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-block:20px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+header h1{font-family:var(--display);font-size:1.6rem;line-height:1.15;margin:0;text-wrap:balance}
+header h1 span{color:var(--teal)}
+header p{margin:6px 0 0;color:var(--muted);font-size:.95rem}
+.privacy{background:var(--tint);border-radius:12px;padding:9px 14px;font-size:.84rem;margin:0}
+
+.progress{display:flex;flex-direction:column;gap:6px}
+.progress-top{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);font-weight:500}
+.track{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.fill{height:100%;width:14%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--blue));transition:width .45s ease}
+
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:18px}
+.step.in,.results.in{animation:slide .35s ease}
+@keyframes slide{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+h2{font-family:var(--display);font-size:1.2rem;margin:0;line-height:1.25;text-wrap:balance}
+.lede{margin:-10px 0 0;color:var(--muted);font-size:.9rem}
+.group{display:flex;flex-direction:column;gap:10px;border:0;padding:0;margin:0;min-width:0}
+.group legend,.label{font-weight:600;font-size:.92rem;padding:0;margin-bottom:8px}
+.hint{font-weight:400;color:var(--muted);font-size:.82rem}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative;cursor:pointer}
+.chip input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.chip span{display:block;padding:9px 14px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);font-size:.9rem;transition:background .15s,border-color .15s}
+.chip input:checked + span{background:var(--tint);border-color:var(--teal);font-weight:600}
+.chip input:focus-visible + span{outline:3px solid var(--blue);outline-offset:2px}
+
+.slider{display:flex;flex-direction:column;gap:4px}
+.slider-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.slider-head label{font-weight:600;font-size:.92rem}
+.slider-head output{font-family:var(--display);color:var(--teal);font-variant-numeric:tabular-nums;min-width:2.6em;text-align:right}
+.slider p{margin:0;font-size:.82rem;color:var(--muted)}
+.slider input{width:100%;accent-color:var(--teal);height:28px}
+.ends{display:flex;justify-content:space-between;gap:12px;font-size:.76rem;color:var(--muted)}
+.ends span:last-child{text-align:right}
+
+textarea{width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;min-height:64px;resize:vertical}
+textarea:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+.err{color:var(--err);font-size:.88rem;font-weight:500;margin:0}
+.nav{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+button{font:inherit;font-weight:600;border-radius:99px;padding:12px 22px;border:1.5px solid transparent;cursor:pointer}
+.primary{background:var(--teal);color:var(--on-accent);margin-left:auto}
+.ghost{background:transparent;border-color:var(--line);color:var(--fg)}
+.primary:hover{filter:brightness(1.07)}
+
+.summary{margin:0}
+.summary div{display:grid;grid-template-columns:minmax(0,38%) minmax(0,1fr);gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.summary dt{color:var(--muted)}
+.summary dd{margin:0;overflow-wrap:anywhere}
+
+.loading{align-items:center;text-align:center;padding:44px 20px}
+.spinner{width:46px;height:46px;border-radius:50%;border:5px solid var(--line);border-top-color:var(--teal);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.results{display:flex;flex-direction:column;gap:16px}
+.confidence{background:var(--tint-blue);border-radius:14px;padding:12px 16px;font-size:.9rem;margin:0}
+.res-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.res-head h3{font-family:var(--display);font-size:1.15rem;margin:0;min-width:0;text-wrap:balance}
+.rank-no{color:var(--muted);font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.course{margin:4px 0 0;font-size:.84rem;color:var(--muted)}
+.fit{display:flex;flex-direction:column;align-items:flex-end;flex:none}
+.fit-label{font-size:.72rem;font-weight:600;color:var(--muted);background:none;border:0;padding:2px 0;border-radius:4px;text-decoration:underline dotted;cursor:help}
+.fit-tip{font-size:.8rem;color:var(--muted);margin:8px 0 0}
+.pct{font-family:var(--display);font-size:1.4rem;color:var(--teal);font-variant-numeric:tabular-nums}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--blue));transition:width .9s ease}
+.res h4{margin:0 0 6px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.res ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:5px;font-size:.93rem}
+.consider{background:var(--warn-bg);color:var(--warn-fg);border-radius:14px;padding:12px 14px}
+.consider h4{color:var(--warn-fg)}
+
+/* full ranked list */
+.all h3{font-family:var(--display);font-size:1.05rem;margin:0}
+.all ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.all li{display:grid;grid-template-columns:2em minmax(0,1fr) 3.2em;gap:4px 8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.all li:last-child{border-bottom:0}
+.all .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.all .p{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.all .mini{grid-column:2 / 4;height:5px;background:var(--line);border-radius:99px;overflow:hidden}
+.all .mini i{display:block;height:100%;background:var(--teal);border-radius:99px}
+.all li.top .nm{font-weight:600}
+.all li.top .p{color:var(--teal)}
+
+footer{font-size:.78rem;color:var(--muted);text-align:center;line-height:1.45;display:flex;flex-direction:column;gap:8px}
+footer b{color:var(--fg)}
+@media (min-width:560px){header h1{font-size:2rem}.card{padding:28px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>PG Specialty <span>Predictor</span></h1>
+    <p>For INI-CET aspirants and MBBS students. Seven short steps, then every branch ranked by how well it fits you.</p>
+  </header>
+  <p class="privacy">Your answers stay in this browser. Nothing is saved, stored or sent anywhere.</p>
+
+  <div class="progress" id="progress">
+    <div class="progress-top"><span id="stepName">Subjects</span><span id="stepCount">Step 1 of 7</span></div>
+    <div class="track" role="progressbar" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1" id="track"><div class="fill" id="fill"></div></div>
+  </div>
+
+  <main id="main">
+    <section class="card step" data-step="1">
+      <h2>Subjects you enjoyed</h2>
+      <p class="lede">Pick the ones you liked studying, not the ones you scored best in.</p>
+      <fieldset class="group"><legend>MBBS subjects <span class="hint">pick any</span></legend><div class="chips" id="g-subjects"></div></fieldset>
+    </section>
+
+    <section class="card step" data-step="2" hidden>
+      <h2>Work that excites you</h2>
+      <p class="lede">Imagine an ordinary working day ten years from now. What are you doing?</p>
+      <fieldset class="group"><legend>Kind of work <span class="hint">pick any</span></legend><div class="chips" id="g-work"></div></fieldset>
+    </section>
+
+    <section class="card step" data-step="3" hidden>
+      <h2>Diseases and patients you'd like to work with</h2>
+      <fieldset class="group"><legend>Disease areas <span class="hint">pick any</span></legend><div class="chips" id="g-diseases"></div></fieldset>
+      <fieldset class="group"><legend>Age group you prefer</legend><div class="chips" id="g-age"></div></fieldset>
+      <fieldset class="group"><legend>Patient gender and examinations</legend><div class="chips" id="g-gender"></div></fieldset>
+    </section>
+
+    <section class="card step" data-step="4" hidden>
+      <h2>How you like to work</h2>
+      <p class="lede">Move each slider to where you honestly sit. There are no right answers.</p>
+      <div id="g-sliders" class="group" style="gap:22px"></div>
+    </section>
+
+    <section class="card step" data-step="5" hidden>
+      <h2>Your career path</h2>
+      <fieldset class="group"><legend>Where would you like to work? <span class="hint">pick any</span></legend><div class="chips" id="g-settings"></div></fieldset>
+      <fieldset class="group"><legend>Would you commit to one 6-year course straight after MBBS? <span class="hint">Some DM and MCh courses run 6 years with no separate MD or MS.</span></legend><div class="chips" id="g-six"></div></fieldset>
+    </section>
+
+    <section class="card step" data-step="6" hidden>
+      <h2>Personal situation</h2>
+      <fieldset class="group"><legend>Do family or personal duties need you to have fixed, predictable hours?</legend><div class="chips" id="g-hours"></div></fieldset>
+      <fieldset class="group"><legend>Are you willing to do night shifts and on-call duty?</legend><div class="chips" id="g-nights"></div></fieldset>
+      <fieldset class="group"><legend>Are you willing to move cities or train abroad?</legend><div class="chips" id="g-relocate"></div></fieldset>
+      <div class="group"><label class="label" for="health">Any health or physical limitation to keep in mind <span class="hint">optional. It only adds a workload note. It never removes a branch.</span></label>
+        <textarea id="health" maxlength="200" placeholder="e.g. back pain, cannot stand for long hours"></textarea></div>
+      <fieldset class="group"><legend>How did MBBS go for you? <span class="hint">changes the note above your results only, never the ranking</span></legend><div class="chips" id="g-perf"></div></fieldset>
+    </section>
+
+    <section class="card step" data-step="7" hidden>
+      <h2>Check your answers</h2>
+      <dl class="summary" id="summary"></dl>
+    </section>
+
+    <div class="card" id="navCard" style="padding:14px 20px;gap:10px">
+      <p class="err" id="err" role="alert" hidden></p>
+      <div class="nav">
+        <button type="button" class="ghost" id="back" hidden>Back</button>
+        <button type="button" class="primary" id="next">Next</button>
+      </div>
+    </div>
+
+    <section class="card loading" id="loading" hidden aria-live="polite">
+      <div class="spinner"></div>
+      <div id="loadingText">Scoring branches against your answers…</div>
+    </section>
+
+    <section class="results" id="results" hidden>
+      <p class="confidence" id="confidence"></p>
+      <div id="cards" class="results"></div>
+      <section class="card all">
+        <h3 id="allTitle">All branches ranked</h3>
+        <ol id="allList"></ol>
+      </section>
+      <div class="nav"><button type="button" class="primary" id="retake" style="margin:0 auto">Retake</button></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Scoring uses a transparent weighting model built on general trends reported in Indian medical education literature. Weights are the author's estimates, not fitted to counselling data. For guidance and reflection only — not professional career advice.</span>
+    <span>Built by <b>Dr. Abhijeet</b> · Abhijeet Archives</span>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   SPECIALTY_WEIGHTS  —  edit here to tune the predictor.
+
+   Slider traits (all 0–10, same direction as the Step 4 sliders):
+     person     0 = pure technique            10 = long-term patient relationships
+     lifestyle  0 = punishing hours           10 = very lifestyle-friendly
+     stress     0 = calm, planned work        10 = constant emergencies
+     diagnostic 0 = hands-on / procedural     10 = purely diagnostic reasoning
+     income     0 = slow to earn              10 = independent income soon after PG
+     hierarchy  0 = independent quickly       10 = many years under seniors
+     clinical   0 = no patient care           10 = fully clinical
+     operative  0 = never operates            10 = operates most of the day
+
+   Other fields:
+     course       degree and length, shown on the card
+     subjects     MBBS subjects; the FIRST is the primary subject (bigger bonus)
+     work         matching options from Step 2
+     diseases     matching options from Step 3
+     ages         "children" | "adults" | "elderly" | "all"
+     settings     matching options from Step 5
+     sixYear      true → direct 6-year course (uses the Step 5 answer)
+     onCallHeavy  true → down-weighted if user needs fixed hours / no nights
+     physical     true → soft workload note if a health limitation is typed
+     sensitive    true → frequent sensitive examinations
+     global       true → strong demand abroad
+     downs        two honest drawbacks, always shown on the card
+
+   All values are the author's estimates. Adjust freely.
+   ===================================================================== */
+const C="Own clinic or private practice", H="Corporate hospital", G="Government or teaching institute", R="Research or industry", P="Public health or administration";
+const SPECIALTY_WEIGHTS = {
+  /* ---------- MD / MS, clinical ---------- */
+  "General Medicine": { course:"MD · 3 years", person:8, lifestyle:6, stress:6, diagnostic:8, income:8, hierarchy:6, clinical:10, operative:0,
+    subjects:["Medicine","Physiology","Pharmacology"], work:["Diagnosing complex cases","Seeing patients long-term","Quick high-volume OPD","Clinical research & academics"],
+    diseases:["Infections","Cardiac","Respiratory","GI/liver","Neuro","Endocrine/diabetes","Renal/urinary","Lifestyle/chronic disease"], ages:["adults","elderly"], settings:[C,H,G], global:true,
+    downs:["Ward and ICU duty in residency is heavy.","Most people need a DM afterwards to stand out, which adds 3 more years."] },
+  "General Surgery": { course:"MS · 3 years", person:4, lifestyle:2, stress:9, diagnostic:2, income:3, hierarchy:9, clinical:10, operative:9,
+    subjects:["Surgery"], work:["Performing procedures","Long, complex operations","Emergency/critical care"],
+    diseases:["GI/liver","Trauma/injury","Oncology"], ages:["adults"], settings:[H,G], onCallHeavy:true, physical:true, sensitive:true,
+    downs:["Independent practice usually needs a hospital and years of mentorship after MS.","Hours are long and emergencies come at night."] },
+  "Pediatrics": { course:"MD · 3 years", person:9, lifestyle:5, stress:6, diagnostic:7, income:7, hierarchy:5, clinical:10, operative:0,
+    subjects:["Pediatrics"], work:["Seeing patients long-term","Quick high-volume OPD","Diagnosing complex cases","Emergency/critical care"],
+    diseases:["Pediatric","Infections","Respiratory","Birth defects"], ages:["children"], settings:[C,H,G], global:true,
+    downs:["Newborn and child ICU nights are frequent in residency.","You treat the child but must also manage anxious parents."] },
+  "Obstetrics & Gynaecology": { course:"MS · 3 years", person:6, lifestyle:2, stress:9, diagnostic:3, income:6, hierarchy:5, clinical:10, operative:7,
+    subjects:["OBG"], work:["Performing procedures","Emergency/critical care","Seeing patients long-term"],
+    diseases:["Reproductive/obstetric","Oncology"], ages:["adults"], settings:[C,H], onCallHeavy:true, physical:true, sensitive:true,
+    downs:["Labour room emergencies come at any hour, for your whole career.","Legal complaints against doctors are among the highest in this branch."] },
+  "Orthopedics": { course:"MS · 3 years", person:4, lifestyle:3, stress:7, diagnostic:2, income:5, hierarchy:6, clinical:10, operative:8,
+    subjects:["Orthopedics","Surgery"], work:["Performing procedures","Long, complex operations","Emergency/critical care","Quick high-volume OPD"],
+    diseases:["Trauma/injury","Musculoskeletal"], ages:["adults","elderly"], settings:[C,H], onCallHeavy:true, physical:true,
+    downs:["Accident and trauma calls are frequent.","The work is physically heavy and implants make private set-up costly."] },
+  "Dermatology": { course:"MD · 3 years", person:7, lifestyle:9, stress:2, diagnostic:7, income:9, hierarchy:2, clinical:10, operative:1,
+    subjects:["Dermatology"], work:["Quick high-volume OPD","Cosmetic/aesthetic work","Seeing patients long-term"],
+    diseases:["Skin","Infections"], ages:["all"], settings:[C], sensitive:true,
+    downs:["Very few seats, so it is one of the hardest branches to get.","Many skin diseases are chronic and patients get frustrated with slow results."] },
+  "Radiology": { course:"MD · 3 years", person:2, lifestyle:8, stress:4, diagnostic:10, income:9, hierarchy:3, clinical:6, operative:0,
+    subjects:["Radiology"], work:["Reading scans/images","Diagnosing complex cases","Working with machines & physics"],
+    diseases:["Oncology","Neuro","Trauma/injury","GI/liver"], ages:["all"], settings:[C,H], global:true,
+    downs:["Little direct patient contact.","Reporting load is high, and machines are too costly for most people to own."] },
+  "Psychiatry": { course:"MD · 3 years", person:10, lifestyle:8, stress:4, diagnostic:7, income:7, hierarchy:3, clinical:10, operative:0,
+    subjects:["Psychiatry"], work:["Counseling & mental health","Seeing patients long-term"],
+    diseases:["Mental health","Neuro","Lifestyle/chronic disease"], ages:["all"], settings:[C,G], global:true,
+    downs:["Recovery is slow and the work is emotionally draining.","Stigma means patients often stop follow-up."] },
+  "Anesthesiology": { course:"MD · 3 years", person:2, lifestyle:4, stress:8, diagnostic:3, income:7, hierarchy:4, clinical:9, operative:1,
+    subjects:["Anesthesia","Physiology","Pharmacology"], work:["Performing procedures","Emergency/critical care"],
+    diseases:["Cardiac","Respiratory","Trauma/injury","Disability/chronic pain"], ages:["all"], settings:[H,G], onCallHeavy:true, global:true,
+    downs:["Emergency theatre and ICU calls are routine.","Patients rarely know your name; the surgeon gets the credit."] },
+  "Ophthalmology": { course:"MS · 3 years", person:5, lifestyle:7, stress:3, diagnostic:4, income:6, hierarchy:5, clinical:10, operative:7,
+    subjects:["Ophthalmology"], work:["Performing procedures","Fine microsurgery & reconstruction","Quick high-volume OPD"],
+    diseases:["Eye"], ages:["all"], settings:[C,H],
+    downs:["Surgical skill takes years to build after MS.","Starting your own practice needs costly equipment."] },
+  "ENT": { course:"MS · 3 years", person:5, lifestyle:6, stress:4, diagnostic:4, income:6, hierarchy:5, clinical:10, operative:6,
+    subjects:["ENT"], work:["Performing procedures","Fine microsurgery & reconstruction","Quick high-volume OPD"],
+    diseases:["ENT","Oncology","Infections"], ages:["all"], settings:[C,H],
+    downs:["Hands-on surgery during residency can be limited.","Advanced work (ear, skull base, head-neck cancer) usually needs a fellowship."] },
+  "Family Medicine": { course:"MD · 3 years", person:9, lifestyle:7, stress:4, diagnostic:7, income:7, hierarchy:2, clinical:10, operative:0,
+    subjects:["Medicine","Pediatrics","Community Medicine"], work:["Seeing patients long-term","Quick high-volume OPD","Preventive/public health"],
+    diseases:["Lifestyle/chronic disease","Endocrine/diabetes","Infections","Pediatric"], ages:["all"], settings:[C], global:true,
+    downs:["Few seats and limited recognition in Indian hospitals so far.","You refer the interesting complex cases onward."] },
+  "Emergency Medicine": { course:"MD · 3 years", person:3, lifestyle:3, stress:10, diagnostic:5, income:6, hierarchy:3, clinical:10, operative:1,
+    subjects:["Medicine","Anesthesia","Surgery"], work:["Emergency/critical care","Performing procedures","Diagnosing complex cases"],
+    diseases:["Trauma/injury","Cardiac","Respiratory","Poisoning"], ages:["all"], settings:[H,G], onCallHeavy:true, physical:true, global:true,
+    downs:["Shift work with nights continues for your whole career.","You stabilise patients and hand them over; you rarely see the outcome."] },
+  "Pulmonary Medicine": { course:"MD · 3 years", person:7, lifestyle:5, stress:6, diagnostic:7, income:7, hierarchy:4, clinical:10, operative:1,
+    subjects:["Respiratory Medicine","Medicine"], work:["Diagnosing complex cases","Performing procedures","Emergency/critical care","Seeing patients long-term"],
+    diseases:["Respiratory","Infections"], ages:["adults","elderly"], settings:[C,H,G], global:true,
+    downs:["Daily exposure to tuberculosis and other airborne infections.","ICU nights are part of the job."] },
+  "Geriatric Medicine": { course:"MD · 3 years", person:9, lifestyle:6, stress:5, diagnostic:8, income:6, hierarchy:3, clinical:10, operative:0,
+    subjects:["Medicine"], work:["Seeing patients long-term","Diagnosing complex cases","Comfort & end-of-life care"],
+    diseases:["Ageing-related","Lifestyle/chronic disease","Neuro","Cardiac"], ages:["elderly"], settings:[C,H,G],
+    downs:["A young specialty in India with few dedicated departments.","In practice it overlaps heavily with General Medicine."] },
+  "Palliative Medicine": { course:"MD · 3 years", person:10, lifestyle:6, stress:4, diagnostic:5, income:4, hierarchy:3, clinical:10, operative:0,
+    subjects:["Medicine","Anesthesia"], work:["Comfort & end-of-life care","Counseling & mental health","Seeing patients long-term"],
+    diseases:["Terminal illness","Oncology","Disability/chronic pain"], ages:["all"], settings:[H,G],
+    downs:["Emotionally heavy: most of your patients will die.","Few posts and modest pay compared with other clinical branches."] },
+  "Physical Medicine & Rehabilitation": { course:"MD · 3 years", person:8, lifestyle:8, stress:2, diagnostic:6, income:5, hierarchy:3, clinical:10, operative:2,
+    subjects:["Orthopedics","Medicine"], work:["Rehabilitation & disability care","Seeing patients long-term","Performing procedures"],
+    diseases:["Disability/chronic pain","Musculoskeletal","Neuro"], ages:["all"], settings:[C,H,G],
+    downs:["Improvement is slow and measured in small gains.","The specialty is poorly known, so referrals and posts are limited."] },
+  "Radiation Oncology": { course:"MD · 3 years", person:6, lifestyle:7, stress:3, diagnostic:6, income:6, hierarchy:3, clinical:9, operative:0,
+    subjects:["Radiology","Medicine"], work:["Cancer treatment planning","Working with machines & physics","Seeing patients long-term"],
+    diseases:["Oncology","Terminal illness"], ages:["all"], settings:[H,G],
+    downs:["You can only work where a radiotherapy machine exists.","Many patients cannot be cured."] },
+  "Nuclear Medicine": { course:"MD · 3 years", person:3, lifestyle:8, stress:2, diagnostic:9, income:6, hierarchy:3, clinical:6, operative:0,
+    subjects:["Radiology","Physiology"], work:["Reading scans/images","Working with machines & physics","Cancer treatment planning"],
+    diseases:["Oncology","Endocrine/diabetes"], ages:["all"], settings:[H,G],
+    downs:["Jobs exist only in large centres with PET or gamma scanners.","Strict radiation safety rules shape daily work."] },
+
+  /* ---------- MD, laboratory and non-clinical ---------- */
+  "Pathology": { course:"MD · 3 years", person:1, lifestyle:9, stress:2, diagnostic:10, income:5, hierarchy:3, clinical:2, operative:0,
+    subjects:["Pathology"], work:["Lab & microscope work","Diagnosing complex cases","Clinical research & academics"],
+    diseases:["Oncology","Infections","Blood disorders"], ages:["all"], settings:[C,H,G],
+    downs:["Almost no patient contact.","Income depends on owning a lab or a salaried hospital post."] },
+  "Laboratory Medicine": { course:"MD · 3 years", person:1, lifestyle:9, stress:2, diagnostic:10, income:5, hierarchy:3, clinical:2, operative:0,
+    subjects:["Pathology","Biochemistry","Microbiology"], work:["Lab & microscope work","Diagnosing complex cases"],
+    diseases:["Blood disorders","Infections","Endocrine/diabetes"], ages:["all"], settings:[H,G,R],
+    downs:["Very few seats.","It overlaps with Pathology and Biochemistry, so job titles outside can be unclear."] },
+  "Microbiology": { course:"MD · 3 years", person:1, lifestyle:9, stress:2, diagnostic:9, income:4, hierarchy:3, clinical:2, operative:0,
+    subjects:["Microbiology"], work:["Lab & microscope work","Infection control & outbreaks","Diagnosing complex cases","Bench research"],
+    diseases:["Infections"], ages:["all"], settings:[H,G,R],
+    downs:["No direct patient care.","Pay is lower than clinical branches unless you run a lab."] },
+  "Biochemistry": { course:"MD · 3 years", person:1, lifestyle:9, stress:1, diagnostic:8, income:4, hierarchy:3, clinical:1, operative:0,
+    subjects:["Biochemistry"], work:["Lab & microscope work","Teaching students","Bench research"],
+    diseases:["Endocrine/diabetes"], ages:["all"], settings:[G,R,H],
+    downs:["No patient care.","Most jobs are teaching posts in medical colleges."] },
+  "Transfusion Medicine": { course:"MD · 3 years", person:2, lifestyle:8, stress:3, diagnostic:8, income:4, hierarchy:3, clinical:3, operative:0,
+    subjects:["Pathology"], work:["Lab & microscope work","Diagnosing complex cases"],
+    diseases:["Blood disorders"], ages:["all"], settings:[H,G],
+    downs:["A narrow field: jobs are tied to blood centres.","Emergency blood requests can come at night."] },
+  "Anatomy": { course:"MD · 3 years", person:1, lifestyle:10, stress:0, diagnostic:5, income:2, hierarchy:3, clinical:0, operative:0,
+    subjects:["Anatomy"], work:["Teaching students","Bench research"],
+    diseases:[], ages:["all"], settings:[G],
+    downs:["You will not treat patients at all.","Jobs and pay are limited to medical colleges."] },
+  "Physiology": { course:"MD · 3 years", person:1, lifestyle:10, stress:0, diagnostic:6, income:2, hierarchy:3, clinical:0, operative:0,
+    subjects:["Physiology"], work:["Teaching students","Bench research"],
+    diseases:[], ages:["all"], settings:[G,R],
+    downs:["You will not treat patients at all.","Jobs and pay are limited to medical colleges and research labs."] },
+  "Biophysics": { course:"MD · 3 years", person:0, lifestyle:9, stress:0, diagnostic:6, income:2, hierarchy:4, clinical:0, operative:0,
+    subjects:["Biochemistry","Physiology"], work:["Bench research","Working with machines & physics"],
+    diseases:[], ages:["all"], settings:[R,G],
+    downs:["Extremely few seats and almost no jobs outside research.","Little connection to everyday clinical medicine."] },
+  "Pharmacology": { course:"MD · 3 years", person:1, lifestyle:9, stress:1, diagnostic:6, income:5, hierarchy:3, clinical:1, operative:0,
+    subjects:["Pharmacology"], work:["Bench research","Teaching students","Clinical research & academics"],
+    diseases:["Poisoning"], ages:["all"], settings:[R,G], global:true,
+    downs:["No patient care.","Better-paid industry jobs mean desk work on drug trials and safety reports."] },
+  "Forensic Medicine": { course:"MD · 3 years", person:1, lifestyle:7, stress:3, diagnostic:7, income:3, hierarchy:3, clinical:1, operative:1,
+    subjects:["Forensic Medicine"], work:["Medico-legal & autopsy work","Teaching students"],
+    diseases:["Poisoning","Trauma/injury"], ages:["all"], settings:[G],
+    downs:["Autopsies and court appearances are the core of the job.","Almost all jobs are government posts."] },
+  "Community Medicine": { course:"MD · 3 years", person:4, lifestyle:9, stress:1, diagnostic:6, income:3, hierarchy:3, clinical:2, operative:0,
+    subjects:["Community Medicine"], work:["Preventive/public health","Infection control & outbreaks","Teaching students","Clinical research & academics"],
+    diseases:["Infections","Lifestyle/chronic disease"], ages:["all"], settings:[G,P],
+    downs:["Very little clinical work.","Careers are in teaching, government programmes and health agencies, with slow pay growth."] },
+  "Hospital Administration": { course:"MD · 3 years", person:2, lifestyle:8, stress:4, diagnostic:3, income:5, hierarchy:3, clinical:0, operative:0,
+    subjects:["Community Medicine"], work:["Hospital management"],
+    diseases:[], ages:["all"], settings:[H,P],
+    downs:["You stop treating patients.","You answer to management and deal with complaints, budgets and staffing."] },
+
+  /* ---------- direct 6-year DM ---------- */
+  "Infectious Diseases (DM, 6-year)": { course:"DM · 6 years after MBBS", person:7, lifestyle:5, stress:5, diagnostic:9, income:5, hierarchy:8, clinical:10, operative:0, sixYear:true,
+    subjects:["Medicine","Microbiology"], work:["Diagnosing complex cases","Infection control & outbreaks","Clinical research & academics"],
+    diseases:["Infections"], ages:["all"], settings:[H,G], global:true,
+    downs:["Six years on one track, chosen straight after MBBS.","A new specialty with few private jobs so far."] },
+  "Neurology (DM, 6-year)": { course:"DM · 6 years after MBBS", person:7, lifestyle:5, stress:6, diagnostic:9, income:7, hierarchy:8, clinical:10, operative:0, sixYear:true,
+    subjects:["Medicine"], work:["Diagnosing complex cases","Seeing patients long-term"],
+    diseases:["Neuro"], ages:["adults","elderly"], settings:[C,H,G], global:true,
+    downs:["Six years on one track, chosen straight after MBBS.","Many conditions are chronic or progressive with no cure."] },
+  "Endocrinology (DM, 6-year)": { course:"DM · 6 years after MBBS", person:8, lifestyle:8, stress:3, diagnostic:8, income:7, hierarchy:8, clinical:10, operative:0, sixYear:true,
+    subjects:["Medicine","Biochemistry"], work:["Seeing patients long-term","Diagnosing complex cases","Quick high-volume OPD"],
+    diseases:["Endocrine/diabetes","Lifestyle/chronic disease"], ages:["all"], settings:[C,H,G],
+    downs:["Six years on one track, chosen straight after MBBS.","Mostly outpatient work with few procedures."] },
+
+  /* ---------- direct 6-year MCh ---------- */
+  "Neurosurgery (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:3, lifestyle:1, stress:10, diagnostic:2, income:3, hierarchy:10, clinical:10, operative:10, sixYear:true,
+    subjects:["Surgery"], work:["Long, complex operations","Fine microsurgery & reconstruction","Emergency/critical care"],
+    diseases:["Neuro","Trauma/injury","Oncology"], ages:["all"], settings:[H,G], onCallHeavy:true, physical:true,
+    downs:["Among the longest and hardest residencies, with head-injury calls every night.","Outcomes can be poor even when the operation goes well."] },
+  "Pediatric Surgery (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:6, lifestyle:2, stress:8, diagnostic:3, income:3, hierarchy:9, clinical:10, operative:9, sixYear:true,
+    subjects:["Surgery","Pediatrics"], work:["Long, complex operations","Performing procedures","Emergency/critical care"],
+    diseases:["Birth defects","Pediatric","GI/liver","Renal/urinary"], ages:["children"], settings:[H,G], onCallHeavy:true, physical:true,
+    downs:["Newborn emergencies arrive at any hour.","Few private set-ups, so most work is in large hospitals."] },
+  "Cardiothoracic & Vascular Surgery (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:3, lifestyle:1, stress:10, diagnostic:2, income:2, hierarchy:10, clinical:10, operative:10, sixYear:true,
+    subjects:["Surgery"], work:["Long, complex operations","Emergency/critical care"],
+    diseases:["Cardiac","Respiratory"], ages:["all"], settings:[H,G], onCallHeavy:true, physical:true,
+    downs:["The longest learning curve; operating independently comes late.","You depend on a full heart team and an expensive theatre."] },
+  "Plastic Surgery (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:5, lifestyle:5, stress:5, diagnostic:2, income:6, hierarchy:8, clinical:10, operative:9, sixYear:true,
+    subjects:["Surgery"], work:["Fine microsurgery & reconstruction","Cosmetic/aesthetic work","Long, complex operations"],
+    diseases:["Burns/wounds","Birth defects","Trauma/injury","Skin"], ages:["all"], settings:[C,H], physical:true,
+    downs:["Residency is mostly burns, trauma and reconstruction, not cosmetic work.","Microsurgery cases can run many hours."] },
+  "Surgical Gastroenterology (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:4, lifestyle:2, stress:8, diagnostic:2, income:4, hierarchy:9, clinical:10, operative:10, sixYear:true,
+    subjects:["Surgery"], work:["Long, complex operations","Performing procedures"],
+    diseases:["GI/liver","Oncology"], ages:["adults"], settings:[H,G], onCallHeavy:true, physical:true,
+    downs:["Operations are long and complications are serious.","Needs a high-end hospital with ICU and transplant-level support."] },
+  "Urology (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:5, lifestyle:5, stress:5, diagnostic:3, income:7, hierarchy:8, clinical:10, operative:8, sixYear:true,
+    subjects:["Surgery"], work:["Performing procedures","Long, complex operations","Quick high-volume OPD"],
+    diseases:["Renal/urinary","Oncology"], ages:["adults","elderly"], settings:[C,H], sensitive:true,
+    downs:["Six years on one track, chosen straight after MBBS.","Endoscopic and laser equipment makes private set-up costly."] },
+  "Trauma Surgery & Critical Care (MCh, 6-year)": { course:"MCh · 6 years after MBBS", person:3, lifestyle:1, stress:10, diagnostic:3, income:3, hierarchy:8, clinical:10, operative:8, sixYear:true,
+    subjects:["Surgery","Anesthesia"], work:["Emergency/critical care","Long, complex operations","Performing procedures"],
+    diseases:["Trauma/injury","Burns/wounds"], ages:["all"], settings:[G,H], onCallHeavy:true, physical:true,
+    downs:["Night and emergency work never ends.","A new specialty with few jobs outside dedicated trauma centres."] }
+};
+
+/* Point weights for each scoring component. MAX_SCORE is the 100% reference ("ideal profile"). */
+const W = { person:10, lifestyle:10, stress:10, stressBonus:4, diagnostic:10, income:8, hierarchy:6, clinical:10, operative:8,
+            subjectPrimary:8, subjectSecondary:4, subjectCap:12,
+            work:5, workCap:15, disease:4, diseaseCap:16, age:5, setting:4, settingCap:8,
+            sensitive:2, global:3, sixYear:4, sixYearNo:0.8 };
+/* Conditional bonuses (stressBonus, sensitive, global, sixYear) sit outside the reference, so the result is clamped at 100. */
+const MAX_SCORE = W.person+W.lifestyle+W.stress+W.diagnostic+W.income+W.hierarchy+W.clinical+W.operative+W.subjectCap+W.workCap+W.diseaseCap+W.age+W.settingCap;
+
+/* ---------------- form options ---------------- */
+const NONE_DISEASE = "No particular disease area";
+const OPT = {
+  subjects:["Anatomy","Physiology","Biochemistry","Pathology","Microbiology","Pharmacology","Forensic Medicine","Community Medicine","Medicine","Surgery","OBG","Pediatrics","Orthopedics","ENT","Ophthalmology","Dermatology","Psychiatry","Radiology","Anesthesia","Respiratory Medicine"],
+  work:["Diagnosing complex cases","Performing procedures","Long, complex operations","Fine microsurgery & reconstruction","Seeing patients long-term","Quick high-volume OPD","Emergency/critical care","Reading scans/images","Lab & microscope work","Bench research","Clinical research & academics","Teaching students","Counseling & mental health","Preventive/public health","Infection control & outbreaks","Cosmetic/aesthetic work","Rehabilitation & disability care","Comfort & end-of-life care","Cancer treatment planning","Working with machines & physics","Medico-legal & autopsy work","Hospital management"],
+  diseases:["Infections","Cardiac","Respiratory","GI/liver","Neuro","Endocrine/diabetes","Renal/urinary","Oncology","Trauma/injury","Musculoskeletal","Skin","Eye","ENT","Reproductive/obstetric","Pediatric","Birth defects","Mental health","Lifestyle/chronic disease","Blood disorders","Burns/wounds","Poisoning","Disability/chronic pain","Terminal illness","Ageing-related",NONE_DISEASE],
+  settings:[C,H,G,R,P],
+  age:[["children","Children"],["adults","Adults"],["elderly","Elderly"],["all","All ages"]],
+  gender:[["any","No preference"],["comfortable","Comfortable with all, including sensitive exams"]],
+  six:[["yes","Yes"],["maybe","Maybe"],["no","No"]],
+  hours:[["yes","Yes"],["somewhat","Somewhat"],["no","No"]],
+  nights:[["yes","Yes"],["sometimes","Sometimes"],["no","No"]],
+  relocate:[["yes","Yes"],["no","No"]],
+  perf:[["strong","Went well"],["average","Average"],["struggling","It was a struggle"]]
+};
+const RADIOS = ["age","gender","six","hours","nights","relocate","perf"];
+const DEFAULTS = { age:"all", gender:"any", six:"maybe", hours:"somewhat", nights:"sometimes", relocate:"no", perf:"average" };
+/* key, label, plain-language explainer, low end, high end */
+const SLIDERS = [
+  ["person","Patient contact","Do you want to master a skill, or know your patients for years?","Skill and technique","Long-term relationships"],
+  ["clinical","Treating patients at all","Some branches are labs, classrooms or offices with no patient care.","No patient care is fine","I must treat patients"],
+  ["lifestyle","Work-life balance","How much do fixed hours and free evenings matter to you?","Career comes first","Lifestyle is critical"],
+  ["stress","Handling emergencies","How do you feel when a patient is crashing in front of you?","I avoid it","I thrive under pressure"],
+  ["diagnostic","Thinking vs doing","Solving the puzzle of a diagnosis, or fixing it with your hands?","Hands-on","Diagnosis"],
+  ["operative","Time spent operating","How much of your day do you want to spend doing surgery?","None","Most of the day"],
+  ["income","Earning early","How soon after PG do you need a good independent income?","I can wait","Within 2–3 years"],
+  ["hierarchy","Years under seniors","Some branches need many more years of training before you work alone.","I want independence fast","I am fine with it"]
+];
+const STEP_NAMES = ["Subjects","Work","Diseases & patients","Working style","Career path","Personal situation","Review"];
+const TOTAL = STEP_NAMES.length, N_BRANCH = Object.keys(SPECIALTY_WEIGHTS).length;
+
+/* ---------------- build the form ---------------- */
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+function chips(group, items, type){
+  $("g-"+group).innerHTML = items.map((it,i)=>{
+    const [val,label] = Array.isArray(it) ? it : [it,it];
+    const checked = type==="radio" && DEFAULTS[group]===val ? " checked" : "";
+    return `<label class="chip"><input type="${type}" name="${group}" id="${group}-${i}" value="${esc(val)}"${checked}><span>${esc(label)}</span></label>`;
+  }).join("");
+}
+["subjects","work","diseases","settings"].forEach(g=>chips(g,OPT[g],"checkbox"));
+RADIOS.forEach(g=>chips(g,OPT[g],"radio"));
+$("g-sliders").innerHTML = SLIDERS.map(([k,label,help,lo,hi])=>
+  `<div class="slider"><div class="slider-head"><label for="s-${k}">${label}</label><output id="o-${k}" for="s-${k}">5/10</output></div>
+   <p>${help}</p>
+   <input type="range" id="s-${k}" min="0" max="10" step="1" value="5">
+   <div class="ends"><span>0 · ${lo}</span><span>${hi} · 10</span></div></div>`).join("");
+SLIDERS.forEach(([k])=>$("s-"+k).addEventListener("input",e=>{$("o-"+k).textContent=e.target.value+"/10";}));
+$("allTitle").textContent = `All ${N_BRANCH} branches ranked`;
+$("loadingText").textContent = `Scoring ${N_BRANCH} branches against your answers…`;
+
+/* ---------------- read answers ---------------- */
+const picked = g => [...document.querySelectorAll(`input[name="${g}"]:checked`)].map(i=>i.value);
+function readAnswers(){
+  const a = { subjects:picked("subjects"), work:picked("work"), diseases:picked("diseases"), settings:picked("settings"),
+    health:$("health").value.trim(), sl:{} };
+  RADIOS.forEach(g=>a[g]=picked(g)[0]);
+  SLIDERS.forEach(([k])=>a.sl[k]=+$("s-"+k).value);
+  return a;
+}
+
+/* ---------------- scoring (pure: answers in, ranked list out) ---------------- */
+const list = arr => arr.length<2 ? arr.join("") : arr.slice(0,-1).join(", ")+" and "+arr[arr.length-1];
+const low = s => /^(GI|ENT|OPD)/.test(s) ? s : s.charAt(0).toLowerCase()+s.slice(1);
+const labelOf = (g,v) => OPT[g].find(o=>o[0]===v)[1];
+const PLACE = { [C]:"your own clinic or private practice", [H]:"a corporate hospital", [G]:"a government or teaching institute", [R]:"research or industry", [P]:"public health or administration" };
+
+function scoreAll(a){
+  const u = a.sl;
+  return Object.entries(SPECIALTY_WEIGHTS).map(([name,s])=>{
+    let pts = 0, mult = 1; const why=[], cons=[];
+    const add=(w,t)=>why.push({w,t}), warn=(w,t)=>cons.push({w,t});
+
+    /* Person vs technique: closeness of slider to branch profile */
+    const pf = 1-Math.abs(u.person-s.person)/10; pts += W.person*pf;
+    add(pf*5, `Your patient-contact setting (${u.person}/10) is close to this branch, which is ${s.person>=7?"built on long-term patient relationships":s.person<=3?"focused on skill and technique with limited patient contact":"a mix of patient contact and technique"}.`);
+
+    /* Clinical vs non-clinical */
+    const cf = 1-Math.abs(u.clinical-s.clinical)/10; pts += W.clinical*cf;
+    if(u.clinical<=3 && s.clinical<=3) add(8, `You are comfortable with little or no patient care (${u.clinical}/10), and this branch is mostly lab, classroom or office work.`);
+    if(u.clinical>=7 && s.clinical<=3) warn(8, `You said treating patients matters to you (${u.clinical}/10); this branch has very little patient care.`);
+
+    /* Lifestyle: boost only, scales with how much the user cares */
+    pts += W.lifestyle*(u.lifestyle/10)*(s.lifestyle/10);
+    if(u.lifestyle>=6 && s.lifestyle>=7) add(6+u.lifestyle/5, `You rated work-life balance ${u.lifestyle}/10, and this is one of the more lifestyle-friendly branches.`);
+    if(u.lifestyle>=7 && s.lifestyle<=3) warn(7, `You rated work-life balance ${u.lifestyle}/10; hours in this branch are long and unpredictable.`);
+
+    /* Stress: penalty only when the branch demands more than the user tolerates */
+    const gap = Math.max(0,s.stress-u.stress); pts += W.stress*(1-gap/10);
+    if(u.stress>=7 && u.lifestyle<=4) pts += W.stressBonus*(s.stress/10);   /* lets surgical branches score well */
+    if(u.stress>=7 && s.stress>=7) add(7, `You handle emergencies well (${u.stress}/10), which suits the emergency load here.`);
+    else if(u.stress<=4 && s.stress<=4) add(6, `You prefer to avoid emergencies (${u.stress}/10), and this branch has few.`);
+    if(gap>=3) warn(6, `Its emergency load (about ${s.stress}/10) is above the level you are comfortable with (${u.stress}/10).`);
+
+    /* Diagnostic vs hands-on */
+    const df = 1-Math.abs(u.diagnostic-s.diagnostic)/10; pts += W.diagnostic*df;
+    add(df*5.5, `Your thinking-vs-doing setting (${u.diagnostic}/10) fits a branch that is ${s.diagnostic>=7?"mostly diagnosis and reasoning":s.diagnostic<=3?"mostly hands-on work":"split between diagnosis and procedures"}.`);
+
+    /* Operating time */
+    const of = 1-Math.abs(u.operative-s.operative)/10; pts += W.operative*of;
+    if(u.operative>=7 && s.operative>=7) add(8, `You want to spend much of your day operating (${u.operative}/10), which is what this branch offers.`);
+    if(s.operative-u.operative>=5) warn(6.5, `This branch involves far more operating than you asked for (${u.operative}/10).`);
+
+    /* Early income: boost only, never a penalty */
+    pts += W.income*(u.income/10)*(s.income/10);
+    if(u.income>=6 && s.income>=7) add(6, `You want to earn early (${u.income}/10); this branch allows independent income soon after PG.`);
+    if(u.income>=7 && s.income<=4) warn(5, `You want to earn early (${u.income}/10), but income here builds slowly.`);
+
+    /* Years under seniors: penalty only when branch needs more than user accepts */
+    const hg = Math.max(0,s.hierarchy-u.hierarchy); pts += W.hierarchy*(1-hg/10);
+    if(u.hierarchy<=4 && s.hierarchy<=3) add(5, `You want independence fast (${u.hierarchy}/10); you can practise this branch without further super-specialty training.`);
+    if(hg>=4) warn(5, `You want independence fast (${u.hierarchy}/10), but this branch means many more years under seniors.`);
+
+    /* Subject enjoyment */
+    const subj = s.subjects.filter(x=>a.subjects.includes(x));
+    if(subj.length){
+      const prim = subj.includes(s.subjects[0]);
+      pts += Math.min(W.subjectCap,(prim?W.subjectPrimary:0)+W.subjectSecondary*(subj.length-(prim?1:0)));
+      add(prim?9:5, `You enjoyed ${list(subj)} in MBBS, ${!prim?"which feeds directly into this branch":subj.length>1?"the subjects this branch is built on":"the core subject of this branch"}.`);
+    }
+
+    /* Kind of work */
+    const wk = s.work.filter(x=>a.work.includes(x));
+    if(wk.length){ pts += Math.min(W.workCap,W.work*wk.length);
+      add(6+2*wk.length, `You picked ${list(wk.map(low))} as work that excites you; that is daily work here.`); }
+
+    /* Disease-area and patient-group match */
+    const ds = s.diseases.filter(x=>a.diseases.includes(x));
+    if(ds.length){ pts += Math.min(W.diseaseCap,W.disease*ds.length);
+      add(6+2*ds.length, `Your disease picks (${list(ds.map(low))}) are the core case-mix here.`); }
+    if(a.age==="all"||s.ages.includes("all")) pts += W.age*0.6;
+    else if(s.ages.includes(a.age)){ pts += W.age; add(6.5, `You prefer working with ${a.age==="elderly"?"elderly patients":a.age}, the main patient group here.`); }
+    if(s.sensitive && a.gender==="comfortable") pts += W.sensitive;
+
+    /* Workplace */
+    const st = s.settings.filter(x=>a.settings.includes(x));
+    if(st.length){ pts += Math.min(W.settingCap,W.setting*st.length);
+      add(5+st.length, `You want to work in ${list(st.map(x=>PLACE[x]))}, where this branch is commonly practised.`); }
+
+    /* Relocation */
+    if(a.relocate==="yes" && s.global){ pts += W.global; add(4.5, `You are open to moving or training abroad, and this branch has strong demand overseas.`); }
+
+    /* Direct 6-year courses */
+    if(s.sixYear){
+      if(a.six==="yes"){ pts += W.sixYear; add(6, `You are willing to commit to one 6-year course straight after MBBS.`); }
+      if(a.six==="no"){ mult *= W.sixYearNo; warn(9.5, `You said you would not commit to a 6-year course; this is one.`); }
+    }
+
+    /* Constraints: gentle down-weighting of on-call-heavy branches */
+    if(s.onCallHeavy){
+      if(a.hours==="yes") mult*=0.87; else if(a.hours==="somewhat") mult*=0.94;
+      if(a.nights==="no") mult*=0.87; else if(a.nights==="sometimes") mult*=0.95;
+      if(a.hours==="yes"||a.nights==="no")
+        warn(9, `You ${a.hours==="yes"?"need predictable hours":"prefer no night shifts"}; residency here involves frequent emergency duty and on-call.`);
+    } else if((a.hours==="yes"||a.nights==="no") && s.lifestyle>=7){
+      add(7, `You ${a.hours==="yes"?"need predictable hours":"want to avoid night shifts"}; work here is mostly scheduled.`);
+    }
+    if(a.health && s.physical) warn(8, `You mentioned a health or physical limitation. Think about the workload: long hours standing and physically demanding duty.`);
+
+    const raw = pts*mult;
+    return { name, course:s.course, raw, pct:Math.max(0,Math.min(100,Math.round(raw/MAX_SCORE*100))),
+      why:why.sort((x,y)=>y.w-x.w).slice(0,4).map(x=>x.t),
+      cons:[...cons.sort((x,y)=>y.w-x.w).slice(0,2).map(x=>x.t), ...s.downs] };
+  }).sort((x,y)=>y.raw-x.raw);
+}
+
+/* ---------------- step flow ---------------- */
+let step = 1;
+const steps = [...document.querySelectorAll(".step")];
+function show(n){
+  step = n;
+  steps.forEach(s=>{ const on = +s.dataset.step===n; s.hidden=!on; s.classList.toggle("in",on); });
+  $("fill").style.width = (n/TOTAL*100)+"%";
+  $("track").setAttribute("aria-valuenow",n);
+  $("stepName").textContent = STEP_NAMES[n-1];
+  $("stepCount").textContent = `Step ${n} of ${TOTAL}`;
+  $("back").hidden = n===1;
+  $("next").textContent = n===TOTAL ? "Show My Best-Fit Branches" : "Next";
+  $("err").hidden = true;
+  if(n===TOTAL) renderSummary();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function validate(){
+  const a = readAnswers();
+  if(step===1 && !a.subjects.length) return "Pick at least one subject you enjoyed.";
+  if(step===2 && !a.work.length) return "Pick at least one kind of work that excites you.";
+  if(step===3 && !a.diseases.length) return "Pick at least one disease area, or choose “No particular disease area”.";
+  if(step===5 && !a.settings.length) return "Pick at least one place you would like to work.";
+  return "";
+}
+function renderSummary(){
+  const a = readAnswers();
+  const rows = [
+    ["Subjects enjoyed",list(a.subjects)],["Work that excites you",list(a.work)],["Disease areas",list(a.diseases)],
+    ["Age group",labelOf("age",a.age)],["Gender and exams",labelOf("gender",a.gender)],
+    ...SLIDERS.map(([k,l])=>[l,a.sl[k]+"/10"]),
+    ["Where you'd like to work",list(a.settings)],["6-year course",labelOf("six",a.six)],
+    ["Needs predictable hours",labelOf("hours",a.hours)],["Night shifts and on-call",labelOf("nights",a.nights)],
+    ["Move cities or abroad",labelOf("relocate",a.relocate)],["Health limitation",a.health||"None entered"],["How MBBS went",labelOf("perf",a.perf)]
+  ];
+  const dl = $("summary"); dl.textContent="";
+  rows.forEach(([k,v])=>{ const d=document.createElement("div"),dt=document.createElement("dt"),dd=document.createElement("dd");
+    dt.textContent=k; dd.textContent=v; d.append(dt,dd); dl.append(d); });
+}
+$("next").addEventListener("click",()=>{
+  const e = validate();
+  if(e){ $("err").textContent=e; $("err").hidden=false; return; }
+  if(step<TOTAL) return show(step+1);
+  predict();
+});
+$("back").addEventListener("click",()=>show(step-1));
+
+/* ---------------- results ---------------- */
+const TIP = "Scores are relative to an ideal profile, so 60–75% represents a strong fit.";
+function predict(){
+  const a = readAnswers();
+  steps.forEach(s=>s.hidden=true);
+  $("navCard").hidden = true; $("progress").hidden = true; $("loading").hidden = false;
+  window.scrollTo({top:0});
+  setTimeout(()=>{                                  /* 1.2 s loading feel */
+    const ranked = scoreAll(a);
+    $("confidence").textContent = {
+      strong:"You said MBBS went well. Treat the top three as a confident shortlist and test them against your internship postings.",
+      average:"You said MBBS was average. Use the top three as a shortlist and spend time in each department before deciding.",
+      struggling:"You said MBBS was a struggle. That does not change the ranking below. Interest that lasts through residency matters more than past marks, so talk to seniors in these branches before deciding."
+    }[a.perf];
+    const box = $("cards"); box.textContent="";
+    ranked.slice(0,3).forEach((r,i)=>{
+      const el = document.createElement("article"); el.className="card res";
+      el.innerHTML = `<div><div class="rank-no">Rank ${i+1} of ${N_BRANCH}</div>
+        <div class="res-head"><div style="min-width:0"><h3></h3><p class="course"></p></div>
+          <div class="fit"><button type="button" class="fit-label" id="fit-label-${i}" title="${TIP}" aria-expanded="false" aria-controls="fit-tip-${i}">Fit score (relative)</button><span class="pct">${r.pct}%</span></div></div>
+        <p class="fit-tip" id="fit-tip-${i}" hidden>${TIP}</p></div>
+        <div class="bar" role="img" aria-label="Fit score ${r.pct} percent"><i></i></div>
+        <div><h4>Why this fits you</h4><ul class="why"></ul></div>
+        <div class="consider"><h4>Honest downsides</h4><ul class="cons"></ul></div>`;
+      el.querySelector("h3").textContent = r.name;
+      el.querySelector(".course").textContent = r.course;
+      el.querySelector(".fit-label").addEventListener("click",e=>{ const t=el.querySelector(".fit-tip"); t.hidden=!t.hidden; e.currentTarget.setAttribute("aria-expanded",String(!t.hidden)); });
+      const fillList=(sel,items)=>items.forEach(t=>{const li=document.createElement("li");li.textContent=t;el.querySelector(sel).append(li);});
+      fillList(".why",r.why); fillList(".cons",r.cons);
+      box.append(el);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.querySelector(".bar i").style.width = r.pct+"%"; }));
+    });
+    const ol = $("allList"); ol.textContent="";
+    ranked.forEach((r,i)=>{
+      const li = document.createElement("li"); if(i<3) li.className="top";
+      li.innerHTML = `<span class="n">${i+1}</span><span class="nm"></span><span class="p">${r.pct}%</span><span class="mini"><i style="width:${r.pct}%"></i></span>`;
+      li.querySelector(".nm").textContent = r.name;
+      ol.append(li);
+    });
+    $("loading").hidden = true;
+    $("results").hidden = false; $("results").classList.add("in");
+  },1200);
+}
+$("retake").addEventListener("click",()=>{
+  document.querySelectorAll('input[type="checkbox"]').forEach(i=>i.checked=false);
+  Object.entries(DEFAULTS).forEach(([g,v])=>document.querySelectorAll(`input[name="${g}"]`).forEach(i=>i.checked=i.value===v));
+  SLIDERS.forEach(([k])=>{ $("s-"+k).value=5; $("o-"+k).textContent="5/10"; });
+  $("health").value="";
+  $("results").hidden = true; $("results").classList.remove("in");
+  $("navCard").hidden = false; $("progress").hidden = false;
+  show(1);
+});
+</script>
+
+</body>
+</html>
